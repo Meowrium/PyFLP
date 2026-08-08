@@ -308,6 +308,33 @@ implemented. Click on a link to go to the documentation for that feature.
 </table>
 <!-- markdownlint-restore -->
 
+> ## ⚠️ This is a maintained fork
+>
+> Upstream [`demberto/PyFLP`](https://github.com/demberto/PyFLP) has been
+> unmaintained since mid-2023 and **cannot parse project files saved by
+> FL Studio 24+ / 25 / 26** (the event stream derails, `channels` raises
+> `NoModelsFound`). This fork adds the fixes needed to parse modern projects
+> while staying backward-compatible with older files.
+>
+> **What changed** (all verified on FL26.1.1 saves + legacy FL20.5 saves):
+>
+> - **Event `0xAC` is varint-length in FL26**, not a fixed 4-byte DWORD —
+>   this single change fixes the stream desync that broke *all* FL26 parsing.
+> - **Playlist items**: 80-byte records (FL 2024/25) and 88-byte records
+>   (FL26 adds an 8-byte tail), on top of the existing 32/60-byte layouts.
+> - **Phantom pattern skipped**: FL26 writes a small header `NotesEvent`
+>   before any `PatternID.New`; it no longer surfaces as a bogus pattern
+>   (which crashed `Pattern.iid` / `arrangements`).
+> - Hardening: bounds-checked `DisplayGroup` indices (FL24+), guarded
+>   `supports_slice` and `PluginID.InternalName`, and unparseable events
+>   degrade to `UnknownDataEvent` instead of aborting the whole parse.
+>
+> Install from this fork:
+>
+> ```none
+> python -m pip install git+https://github.com/Meowrium/PyFLP.git
+> ```
+
 ## ⏬ Installation
 
 CPython 3.8+ / PyPy 3.8+ required.
