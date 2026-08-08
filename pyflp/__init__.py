@@ -127,7 +127,12 @@ def parse(file: pathlib.Path | str) -> Project:
         elif id < DWORD:
             value = stream.read(2)
         elif id < TEXT:
-            value = stream.read(4)
+            if id == EventEnum(0xAC):
+                # FL26+: event 0xAC (DWORD+44) is varint-length, not fixed 4 bytes
+                size = c.VarInt.parse_stream(stream)
+                value = stream.read(size)
+            else:
+                value = stream.read(4)
         else:
             size = c.VarInt.parse_stream(stream)
             value = stream.read(size)
@@ -157,13 +162,24 @@ def parse(file: pathlib.Path | str) -> Project:
                 event_type = str_type
 
                 if id == PluginID.InternalName:
-                    plug_name = event_type(id, value).value
+                    try:
+                        plug_name = event_type(id, value).value
+                    except Exception:
+                        plug_name = None
             elif id == PluginID.Data and plug_name is not None:
                 event_type = get_event_by_internal_name(plug_name)
             else:
                 event_type = UnknownDataEvent
 
-        events.append(event_type(id, value))
+        try:
+            events.append(event_type(id, value))
+        except Exception:
+            # FL24+/26 can carry events PyFLP misinterprets as text; degrade
+            # gracefully instead of aborting the whole parse.
+            try:
+                events.append(UnknownDataEvent(id, value))
+            except Exception:
+                pass
 
     return Project(
         EventTree(init=(IndexedEvent(r, e) for r, e in enumerate(events))),

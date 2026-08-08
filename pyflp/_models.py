@@ -111,7 +111,12 @@ def supports_slice(func: Callable[[ModelCollection[MT_co], str | int | slice], M
     @functools.wraps(func)
     def wrapper(self: Any, i: Any) -> MT_co | Sequence[MT_co]:
         if isinstance(i, slice):
-            return [model for idx, model in enumerate(self) if idx in range(i.start, i.stop)]
+            start, stop = i.start, i.stop
+            if start is None:
+                start = 0
+            if stop is None:
+                stop = len(self)
+            return [model for idx, model in enumerate(self) if idx in range(start, stop)]
         return func(self, i)
 
     return wrapper

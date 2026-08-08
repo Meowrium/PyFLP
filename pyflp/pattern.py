@@ -349,7 +349,12 @@ class Patterns(EventModel, ModelCollection[Pattern]):
             if ie.e.id in (*PatternID, *TimeMarkerID):
                 tmp_dict[cur_pat_id].append(ie)
 
-        for events in tmp_dict.values():
+        for pat_id, events in tmp_dict.items():
+            # FL26 writes a small NotesEvent (0xE0) in the project header before
+            # any PatternID.New; it lands in the cur_pat_id=0 bucket and would
+            # otherwise surface as a phantom pattern with no New event.
+            if pat_id == 0 and PatternID.New not in {e.e.id for e in events}:
+                continue
             et = EventTree(self.events, events)
             self.events.children.append(et)
             yield Pattern(et)

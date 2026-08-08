@@ -82,12 +82,21 @@ class PlaylistEvent(ListEventBase):
             "start_offset" / c.Float32l,  # 28
             "end_offset" / c.Float32l,  # 32
             "_u3" / c.If(c.this._params["new"], c.Bytes(28)) * "New in FL 21",  # 60
+            "_u4" / c.If(c.this._params["fl2025"], c.Bytes(20)) * "New in FL 2024/2025",  # 80
+            "_u5" / c.If(c.this._params["fl26"], c.Bytes(8)) * "New in FL 26",  # 88
         )
     )
-    SIZES = [32, 60]
+    SIZES = [32, 60, 80, 88]
 
     def __init__(self, id: EventEnum, data: bytes) -> None:
-        super().__init__(id, data, new=not len(data) % 60)
+        n = len(data)
+        # Prefer the 60-byte reading on a 60/80 common multiple so files that
+        # parsed before stay unaffected (#205). 88 never shares a small multiple
+        # with 60 (lcm = 1320), so 88-byte records are unambiguous in practice.
+        fl26 = n % 88 == 0 and n % 60 != 0
+        fl2025 = (n % 80 == 0 and n % 60 != 0) and not fl26
+        new = fl2025 or fl26 or not n % 60
+        super().__init__(id, data, new=new, fl2025=fl2025, fl26=fl26)
 
 
 @enum.unique

@@ -1583,7 +1583,13 @@ class ChannelRack(EventModel, ModelCollection[Channel]):
                     ct = Sampler
 
             if iid is not None:
-                cur_ch = ch_dict[iid] = ct(et, channels=ch_dict, group=groups[groupnum])
+                # FL24+/26 files can reference group indices beyond the parsed
+                # DisplayGroup list; fall back to an anonymous placeholder.
+                if groupnum is not None and 0 <= groupnum < len(groups):
+                    grp = groups[groupnum]
+                else:
+                    grp = DisplayGroup(et)
+                cur_ch = ch_dict[iid] = ct(et, channels=ch_dict, group=grp)
                 yield cur_ch
 
     def __len__(self) -> int:
